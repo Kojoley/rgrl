@@ -1,0 +1,208 @@
+{
+  // http://filext.com/file-extension/(JRM|RNF|QOF)
+
+  //classHeader="header.txt"
+  parserClass="rgrl.grammar.parser.SrgParser"
+  parserUtilClass="rgrl.grammar.parser.SrgParserUtil"
+
+  extends="com.intellij.extapi.psi.ASTWrapperPsiElement"
+
+  //implements="rgrl.grammar.psi.SrgCompositeElement"
+  //extends="rgrl.grammar.psi.SrgCompositeElementImpl"
+
+  psiClassPrefix="SrgPsi"
+  psiImplClassSuffix="Impl"
+  psiPackage="rgrl.grammar.psi"
+  psiImplPackage="rgrl.grammar.psi.impl"
+  psiImplUtilClass="rgrl.grammar.psi.impl.SrgPsiImplUtil"
+
+  //elementTypePrefix="SRG_"
+  elementTypeHolderClass="rgrl.grammar.psi.SrgTypes"
+  elementTypeClass="rgrl.grammar.psi.SrgElementType"
+  tokenTypeClass="rgrl.grammar.psi.SrgTokenType" // IElementType heir to be used for PSI tree leafs (tokens).
+  //tokenTypeFactory="some.package.some.class.static.factoryMethod" // Optional token element type factory method
+  //stubClass="" // Stub object class for StubIndex support. Generated PSI will implement StubBasedPsiElementBase and extend StubBasedPsiElementBase.
+
+
+  // List of tokens and their string values.
+  tokens = [
+    COMMENT = 'regexp:#.*'
+
+    RECORD_TYPE_PACKAGE = "PK:"
+    RECORD_TYPE_CLASS = "CL:"
+    RECORD_TYPE_METHOD = "MD:"
+    RECORD_TYPE_FIELD = "FD:"
+
+    SEMICOLON = ';'
+    JAVA_TYPE_ARRAY = '['
+    JAVA_TYPE_CLASS = 'L'
+    JAVA_TYPE_BOOLEAN = 'Z'
+    JAVA_TYPE_CHAR = 'C'
+    JAVA_TYPE_BYTE = 'B'
+    JAVA_TYPE_SHORT = 'S'
+    JAVA_TYPE_INTEGER = 'I'
+    JAVA_TYPE_FLOAT = 'F'
+    JAVA_TYPE_LONG = 'J'
+    JAVA_TYPE_DOUBLE = 'D'
+    JAVA_TYPE_VOID = 'V'
+
+    BRACKET_OPEN = '('
+    BRACKET_CLOSE = ')'
+    SLASH2 = '/'
+    DOT = '.'
+
+    IDENTIFIER = 'regexp:[:jletter:][:jletterdigit:]*'
+    //METHOD_DESCRIPTOR = 'regexp:\([^)]*\)[^\ \t\f\r\n]+'
+
+    //REFERENCE_ELEMENT = 'REFERENCE_ELEMENT' // fake token
+  ]
+
+  //implements(".*_name")="com.intellij.psi.PsiNamedElement"
+
+  //implements(".*_name")="rgrl.grammar.psi.SrgNamedElement"
+  //extends(".*_name")="rgrl.grammar.psi.SrgNamedElementImpl"
+
+  //consumeTokenMethod(".*_name|.*_types?")="consumeTokenFast"
+
+  //name(".*_q_s_name")="q_s_name"
+  //extends(".*_q_s_name")="q_s_name"
+
+  extends("java_.*_type")="java_type"
+  //consumeTokenMethod("java_.*_type")="consumeTokenFast"
+
+  extends("record_.*")="record"
+
+  //extends("method_.*_type")="java_type"
+
+}
+ 
+srgFile ::= item_*
+private item_ ::= (record|COMMENT) { recoverUntil=item_recover } { pin=1 }
+private item_recover ::= !('PK:' | 'CL:' | 'MD:' | 'FD:' | WHITE_SPACE)
+
+record ::= record_package | record_class | record_method | record_field
+
+record_package ::= 'PK:' package_name package_name {methods=[rename_from="/package_name[0]" rename_to="/package_name[1]"]}
+record_class ::= 'CL:' class_name class_name {methods=[rename_from="/class_name[0]" rename_to="/class_name[1]"]}
+record_method ::= 'MD:' method_spec method_spec {methods=[rename_from="/method_spec[0]" rename_to="/method_spec[1]"]}
+record_field ::= 'FD:' field_name field_name {methods=[rename_from="/field_name[0]" rename_to="/field_name[1]"]}
+
+//method_spec ::= method_name <<is_method_descriptor>>
+method_spec ::= method_name method_descriptor
+
+
+/*method_name ::= reference_element ( '/' reference_element ) +
+field_name ::= reference_element ( '/' reference_element ) +
+class_name ::= reference_element ( '/' reference_element ) * //{ methods=[name="/id[last]"] }
+package_name ::= '.' | reference_element ( '/' reference_element ) * //{ methods=[name="/id[last]"] }
+reference_element ::= IDENTIFIER*/
+/*
+method_name ::= reference_element
+field_name ::= reference_element
+class_name ::= reference_element
+package_name ::= reference_element_dot | reference_element
+reference_element_dot ::= '.' { elementType="reference_element" }
+reference_element ::=  ( IDENTIFIER '/' ) * IDENTIFIER  {pin(".*")=2
+//reference_element ::= IDENTIFIER ( '/' reference_element ) ?  {
+                                                                 mixin="rgrl.grammar.psi.impl.SrgNamedElementImpl"
+                                                                 implements="rgrl.grammar.psi.SrgNamedElement"
+                                                                 methods=[getName setName getNameIdentifier getPresentation getDeepest toString]
+                                                             } // fake Psi for <<reference_match>> // hack for being an '.' token child of reference_element
+*/
+
+/*
+method_name ::= ( id '/' )+ id
+field_name ::= ( id '/' )+ id
+class_name ::= ( id '/' )* id //{ methods=[name="/id[last]"] }
+package_name ::= '.' | ( id '/' )* id //{ methods=[name="/id[last]"] }
+*/
+
+/*
+method_name ::= <<reference_match false>> id
+field_name ::= <<reference_match false>> id
+class_name ::= <<reference_match true>> id
+package_name ::= '.' | <<reference_match true>> id
+*/
+/*
+method_name ::= <<reference_match>>
+field_name ::= <<reference_match>>
+class_name ::= <<reference_match>>
+package_name ::= '.' | <<reference_match>>
+
+reference_element ::= [] // fake Psi for <<reference_match>>
+*/
+
+method_name ::= reference_element
+field_name ::= reference_element
+class_name ::= reference_element
+package_name ::= reference_element_dot | reference_element
+
+external reference_element_match ::= reference_match
+reference_element_dot ::= '.' { elementType="reference_element" }
+reference_element ::= reference_element_match
+//reference_element ::= <<reference_match>>
+{
+    mixin="rgrl.grammar.psi.impl.SrgNamedElementImpl"
+    implements="rgrl.grammar.psi.SrgNamedElement"
+    methods=[getName setName getNameIdentifier getPresentation getDeepest toString]
+}
+
+//reference_element ::= IDENTIFIER ( '/' reference_element )*
+
+/*
+method_name ::= pkg_y id
+field_name ::= pkg_y id
+class_name ::= pkg_n id //{ methods=[name="/id[last]"] }
+package_name ::= '.' | pkg_n id //{ methods=[name="/id[last]"] }
+
+pkg_y ::= ( id '/' )+
+pkg_n ::= [] ( id '/' )*
+*/
+
+/*
+method_name ::= class_name '/' id { rightAssociative=true }
+field_name ::= class_name '/' id { rightAssociative=true }
+class_name ::= pkg id { rightAssociative=true }
+package_name ::= '.' | (pkg '/')? id //{ methods=[name="/id[last]"] }
+
+//pkg ::= id ( '/' id  )* //{ rightAssociative=true }
+pkg ::= [] ( id '/' )* //{ rightAssociative=true }
+//pkg ::= <<package_match>>
+//element_list ::= '(' element (',' (element | &')'))* ')' {pin(".*")=1}
+*/
+
+/*
+method_name ::= a_mtd
+field_name ::= a_fld
+class_name ::= a_cls
+package_name ::= '.' | a_pkg //{ methods=[name="/id[last]"] }
+
+a_mtd ::= a_cls '/' id
+a_fld ::= a_cls '/' id
+a_cls ::= (a_pkg '/')? id
+a_pkg ::= <<hey a_pkg>> id
+*/
+
+//method_name ::= <<fqn_match 2>>
+//field_name ::= <<fqn_match 2>>
+//class_name ::= <<fqn_match 1>>
+//package_name ::= '.' | <<fqn_match 1>>
+
+//fake reference_element ::= [] reference_element
+
+//private id ::= IDENTIFIER { name="reference_element" }
+
+//method_descriptor ::= '(' method_parameter_types ( ')' method_return_type ) { pin(".*")=1 }
+method_descriptor ::= '(' java_type * ( ')' java_type ) { pin(".*")=1 }
+
+//method_parameter_types ::= <<is_jni_type>> *
+//method_return_type ::= <<is_jni_type>>
+
+//method_parameter_types ::= [] java_type *
+//method_return_type ::= java_type
+
+java_type ::= java_base_type | java_class_type | java_array_type
+
+java_array_type ::= '[' java_type { methodRenames("getJavaType")="getComponentType" }
+java_base_type ::= 'Z' | 'C' | 'B' | 'S' | 'I' | 'F' | 'J' | 'D' | 'V' { consumeTokenMethod="consumeTokenFast" }
+java_class_type ::= 'L' class_name ';'
